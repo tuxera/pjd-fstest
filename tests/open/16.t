@@ -13,17 +13,17 @@ n1=`namegen`
 
 expect 0 symlink ${n0} ${n1}
 case "${os}" in
-SunOS)
-	expect ELOOP open ${n1} O_RDONLY,O_CREAT,O_NOFOLLOW 0644
-	expect ELOOP open ${n1} O_RDONLY,O_NOFOLLOW
-	expect ELOOP open ${n1} O_WRONLY,O_NOFOLLOW
-	expect ELOOP open ${n1} O_RDWR,O_NOFOLLOW
-        ;;
-*)
+FreeBSD)
 	expect EMLINK open ${n1} O_RDONLY,O_CREAT,O_NOFOLLOW 0644
 	expect EMLINK open ${n1} O_RDONLY,O_NOFOLLOW
 	expect EMLINK open ${n1} O_WRONLY,O_NOFOLLOW
 	expect EMLINK open ${n1} O_RDWR,O_NOFOLLOW
+        ;;
+*)
+	expect ELOOP open ${n1} O_RDONLY,O_CREAT,O_NOFOLLOW 0644
+	expect ELOOP open ${n1} O_RDONLY,O_NOFOLLOW
+	expect ELOOP open ${n1} O_WRONLY,O_NOFOLLOW
+	expect ELOOP open ${n1} O_RDWR,O_NOFOLLOW
         ;;
 esac
 expect 0 unlink ${n1}

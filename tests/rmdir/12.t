@@ -18,6 +18,9 @@ case "${os}" in
 FreeBSD)
 	expect EINVAL rmdir ${n0}/${n1}/..
 	;;
+Linux)
+	expect 'ENOTEMPTY|EEXIST' rmdir ${n0}/${n1}/..
+	;;
 *)
 	expect EEXIST rmdir ${n0}/${n1}/..
 	;;

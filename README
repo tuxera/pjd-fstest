@@ -4,9 +4,9 @@ Few notes on how to use fstest in short steps:
 
 	# cd fstest
 	# vi tests/conf
-	Change 'fs' to file system type you want to test (UFS or ZFS).
+	Change 'fs' to file system type you want to test (UFS, ZFS, other).
 	# vi Makefile
-	You need to manually tweak few things by editing CFLAGS lines
+	You may need to manually tweak few things by editing CFLAGS lines
 	at the top of the file.
 	# make
 	It will compile fstest utility which is used by regression tests.
@@ -15,8 +15,8 @@ Few notes on how to use fstest in short steps:
 
 That's all. Enjoy.
 
-Currently supported operating systems: FreeBSD, Solaris.
-Currently supported file system types: UFS, ZFS.
+Currently supported operating systems: FreeBSD, Solaris, Linux.
+Currently supported file system types: UFS, ZFS, other.
 
 -- 
 Pawel Jakub Dawidek <pjd@FreeBSD.org>

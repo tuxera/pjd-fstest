@@ -60,7 +60,7 @@ test_check()
 
 namegen()
 {
-	echo "fstest_`dd if=/dev/random bs=1k count=1 2>/dev/null | openssl md5`"
+	echo "fstest_`dd if=/dev/urandom bs=1k count=1 2>/dev/null | openssl md5`"
 }
 
 quick_exit()
