@@ -16,7 +16,7 @@ SunOS:UFS)
 	expect 0 unlink ${n0}
 	expect ENOENT rmdir ${n0}
 	;;
-Linux:other)
+Linux:*)
 	# Non-POSIX value returned by Linux since 2.1.132
 	expect EISDIR unlink ${n0}
 	expect 0 rmdir ${n0}
