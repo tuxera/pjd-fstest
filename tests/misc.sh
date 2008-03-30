@@ -18,6 +18,48 @@ fi
 fstest="${maindir}/fstest"
 . ${maindir}/tests/conf
 
+run_getconf()
+{
+	if val=$(getconf "${1}" .); then
+		if [ "$value" = "undefined" ]; then
+			echo "${1} is undefined"
+			exit 1
+		fi
+	else
+		echo "Failed to get ${1}"
+		exit 1
+	fi
+
+	echo $val
+}
+
+name_max_val=$(run_getconf NAME_MAX)
+path_max_val=$(run_getconf PATH_MAX)
+
+name_max="_"
+for ((i = 1; i < $name_max_val; i++)); do
+	name_max="${name_max}x"
+done
+
+num_of_dirs=$(( ($path_max_val + $name_max_val) / ($name_max_val + 1) ))
+
+too_long_dir="${name_max}"
+for ((i = 1; i < $num_of_dirs; i++)); do
+	too_long_dir="${too_long_dir}/${name_max}"
+done
+
+too_long="${too_long_dir}/x"
+
+create_too_long()
+{
+	mkdir -p ${too_long_dir}
+}
+
+unlink_too_long()
+{
+	rm -rf ${name_max}
+}
+
 expect()
 {
 	e="${1}"
