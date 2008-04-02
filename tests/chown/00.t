@@ -282,8 +282,8 @@ ctime1=`${fstest} stat ${n0} ctime`
 sleep 1
 expect 0 -- chown ${n0} -1 -1
 ctime2=`${fstest} stat ${n0} ctime`
-case "${os}" in
-Linux)
+case "${os}:${fs}" in
+Linux:ext3)
 	test_check $ctime1 -lt $ctime2
         ;;
 *)
@@ -297,8 +297,8 @@ ctime1=`${fstest} stat ${n0} ctime`
 sleep 1
 expect 0 -- chown ${n0} -1 -1
 ctime2=`${fstest} stat ${n0} ctime`
-case "${os}" in
-Linux)
+case "${os}:${fs}" in
+Linux:ext3)
 	test_check $ctime1 -lt $ctime2
         ;;
 *)
@@ -312,8 +312,8 @@ ctime1=`${fstest} stat ${n0} ctime`
 sleep 1
 expect 0 -- chown ${n0} -1 -1
 ctime2=`${fstest} stat ${n0} ctime`
-case "${os}" in
-Linux)
+case "${os}:${fs}" in
+Linux:ext3)
 	test_check $ctime1 -lt $ctime2
         ;;
 *)
@@ -327,8 +327,8 @@ ctime1=`${fstest} lstat ${n0} ctime`
 sleep 1
 expect 0 -- lchown ${n0} -1 -1
 ctime2=`${fstest} lstat ${n0} ctime`
-case "${os}" in
-Linux)
+case "${os}:${fs}" in
+Linux:ext3)
 	test_check $ctime1 -lt $ctime2
         ;;
 *)
