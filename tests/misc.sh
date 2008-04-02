@@ -41,18 +41,19 @@ for ((i = 1; i < $name_max_val; i++)); do
 	name_max="${name_max}x"
 done
 
-num_of_dirs=$(( ($path_max_val + $name_max_val) / ($name_max_val + 1) ))
+num_of_dirs=$(( ($path_max_val + $name_max_val) / ($name_max_val + 1) - 1 ))
 
-too_long_dir="${name_max}"
+long_dir="${name_max}"
 for ((i = 1; i < $num_of_dirs; i++)); do
-	too_long_dir="${too_long_dir}/${name_max}"
+	long_dir="${long_dir}/${name_max}"
 done
+long_dir="${long_dir}/x"
 
-too_long="${too_long_dir}/x"
+too_long="${long_dir}/${name_max}"
 
 create_too_long()
 {
-	mkdir -p ${too_long_dir}
+	mkdir -p ${long_dir}
 }
 
 unlink_too_long()
