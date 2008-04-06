@@ -103,7 +103,7 @@ test_check()
 
 namegen()
 {
-	echo "fstest_`dd if=/dev/urandom bs=1k count=1 2>/dev/null | openssl md5`"
+	echo "fstest_`dd if=/dev/urandom bs=1k count=1 2>/dev/null | md5sum  | cut -f1 -d' '`"
 }
 
 quick_exit()
