@@ -37,15 +37,19 @@ name_max_val=$(run_getconf NAME_MAX)
 path_max_val=$(run_getconf PATH_MAX)
 
 name_max="_"
-for ((i = 1; i < $name_max_val; i++)); do
+i=1
+while test $i -lt $name_max_val ; do 
 	name_max="${name_max}x"
+	i=$(($i+1))
 done
 
 num_of_dirs=$(( ($path_max_val + $name_max_val) / ($name_max_val + 1) - 1 ))
 
 long_dir="${name_max}"
-for ((i = 1; i < $num_of_dirs; i++)); do
+i=1
+while test $i -lt $num_of_dirs ; do 
 	long_dir="${long_dir}/${name_max}"
+	i=$(($i+1))
 done
 long_dir="${long_dir}/x"
 
