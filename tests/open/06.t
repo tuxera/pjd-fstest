@@ -6,7 +6,7 @@ desc="open returns EACCES when the required permissions (for reading and/or writ
 dir=`dirname $0`
 . ${dir}/../misc.sh
 
-echo "1..65"
+echo "1..72"
 
 n0=`namegen`
 n1=`namegen`
@@ -82,7 +82,20 @@ expect 0 -u 65534 -g 65534 chmod ${n1} 0770
 expect EACCES -u 65533 -g 65533 open ${n1} O_RDONLY
 expect EACCES -u 65533 -g 65533 open ${n1} O_WRONLY
 expect EACCES -u 65533 -g 65533 open ${n1} O_RDWR
+#
+# EACCES for opening a directory read-only with no read access
+# EACCES for reading a directory with no execute access
+#
+cd ..
+expect 0 -u 65534 -g 65534 open ${n0} O_RDONLY
+expect 0 -u 65534 -g 65534 chmod ${n0} 0355
+expect EACCES -u 65534 -g 65534 open ${n0} O_RDONLY
+expect 0770 -u 65534 -g 65534 stat ${n0}/${n1} mode
+expect 0 -u 65534 -g 65534 chmod ${n0} 0655
+expect EACCES -u 65534 -g 65534 stat ${n0}/${n1} mode
 
+expect 0 -u 65534 -g 65534 chmod ${n0} 0755
+cd ${n0}
 expect 0 -u 65534 -g 65534 unlink ${n1}
 
 cd ${cdir}
