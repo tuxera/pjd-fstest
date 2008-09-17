@@ -40,6 +40,9 @@
 #include <ctype.h>
 #include <errno.h>
 #include <assert.h>
+#ifdef HAS_ACL
+#include <sys/acl.h>
+#endif
 
 #ifndef HAS_TRUNCATE64
 #define	truncate64	truncate
@@ -78,6 +81,10 @@ enum action {
 	ACTION_TRUNCATE,
 	ACTION_STAT,
 	ACTION_LSTAT,
+#ifdef HAS_ACL
+	ACTION_GETFACL,
+	ACTION_SETFACL,
+#endif
 };
 
 #define	TYPE_NONE	0x0000
@@ -119,6 +126,10 @@ static struct syscall_desc syscalls[] = {
 	{ "truncate", ACTION_TRUNCATE, { TYPE_STRING, TYPE_NUMBER, TYPE_NONE } },
 	{ "stat", ACTION_STAT, { TYPE_STRING, TYPE_STRING, TYPE_NONE } },
 	{ "lstat", ACTION_LSTAT, { TYPE_STRING, TYPE_STRING, TYPE_NONE } },
+#ifdef HAS_ACL
+	{ "getfacl", ACTION_GETFACL, { TYPE_STRING, TYPE_STRING, TYPE_NONE } },
+	{ "setfacl", ACTION_SETFACL, { TYPE_STRING, TYPE_STRING, TYPE_STRING | TYPE_OPTIONAL } },
+#endif
 	{ NULL, -1, { TYPE_NONE } }
 };
 
@@ -353,6 +364,154 @@ show_stats(struct stat64 *sp, char *what)
 	printf("\n");
 }
 
+#ifdef HAS_ACL
+
+/*
+ *		Get the current setting of an ACL
+ *
+ *	Argument may be :
+ *	- access : to get the list of permissions in access control list
+ *	- default : to get the list of permissions in default control list
+ */
+
+int do_getfacl(const char *path, const char *filter)
+{
+	char *textacl;
+	acl_t acl;
+	ssize_t size;
+	const char *p;
+	const char *loc;
+	char c;
+	int def;
+	int k;
+
+	errno = 0;
+	def = !strcmp(filter,"default");
+	if (def || !strcmp(filter,"access")) {
+		acl = acl_get_file(path,(def ? ACL_TYPE_DEFAULT : ACL_TYPE_ACCESS));
+		if (acl) {
+				/*
+				 * When there is no extended ACL, we get
+				 * ENODATA (not mentioned in the man.)
+				 * In such situation return basic ACL
+				 * (or void for default ACL) with no error
+				 */
+			if (errno == ENODATA)
+				errno = 0;
+			textacl = acl_to_text(acl,&size);
+				/* getting all the access or default rights */
+			k = 0;
+			p = textacl;
+			while (p && *p) {
+				loc = p;
+				if (loc && strchr("ugom",*loc)) {
+					c = *loc;
+					loc = strchr(loc,':');
+					if (loc) {
+						if (k) {
+							putchar(',');
+							k++;
+							}
+						putchar(c);
+						k++;
+						while (*loc
+						   && (*loc != '\n')
+						   && (*loc != '\t')) {
+							c = *loc++;
+							putchar(c);
+							k++;
+						}
+					}
+				}
+				while (*p && (*p != '\n')) p++;
+				if (*p) p++;
+			}
+			if (textacl)
+				acl_free(textacl);
+			if (k)
+				putchar('\n');
+			else
+				printf("void\n");
+			acl_free(acl);
+		}
+	} else
+		errno = EBADRQC; /* "bad request" */
+	return (-errno);
+}
+
+/*
+ *		Set a new ACL
+ *
+ *      The first argument can be a list of options among k (remove
+ *	default entries), b (remove extended entries) or m (modify entry).
+ *	If m is present, it can be associated with d to mean default
+ *	acl, and next argument gives the new permissions
+ */
+
+int do_setfacl(const char *path, const char *options, const char *textacl)
+{
+	int r;
+	int type;
+	acl_t acl;
+	int dob;
+	int dok;
+	int dom;
+	struct stat st;
+	char textmode[30];
+
+	r = 0;
+	dob = strchr(options,'b') != (char*)NULL;
+	dok = strchr(options,'k') != (char*)NULL;
+	dom = strchr(options,'m') != (char*)NULL;
+	if ((dom && !textacl)
+	    || (!dom && (textacl || (!dok && !dob) || strchr(options,'d')))) {
+		errno = EBADRQC; /* "bad request" */
+		r = -1;
+	} else {
+		if (dob || dok) {
+			r = acl_delete_def_file(path);
+		}
+		if (dob && !r) {
+			if (!stat(path,&st)) {
+				sprintf(textmode,"u::%c%c%c,g::%c%c%c,o::%c%c%c",
+					(st.st_mode & 0400 ? 'r' : '-'),
+					(st.st_mode & 0200 ? 'w' : '-'),
+					(st.st_mode & 0100 ? 'x' : '-'),
+					(st.st_mode & 0040 ? 'r' : '-'),
+					(st.st_mode & 0020 ? 'w' : '-'),
+					(st.st_mode & 0010 ? 'x' : '-'),
+					(st.st_mode & 004 ? 'r' : '-'),
+					(st.st_mode & 002 ? 'w' : '-'),
+					(st.st_mode & 001 ? 'x' : '-'));
+				acl = acl_from_text(textmode);
+				if (acl) {
+					r = acl_set_file(path,ACL_TYPE_ACCESS,acl);
+					acl_free(acl);
+				} else
+					r = -1;
+			} else
+				r = -1;
+		}
+		if (!r && dom) {
+			if (strchr(options,'d'))
+				type = ACL_TYPE_DEFAULT;
+			else
+				type = ACL_TYPE_ACCESS;
+			acl = acl_from_text(textacl);
+			if (acl) {
+				r = acl_set_file(path,type,acl);
+				acl_free(acl);
+			} else
+				r = -1;
+		}
+	}
+	if (r)
+		r = -errno;
+	return (r);
+}
+
+#endif
+
 static unsigned int
 call_syscall(struct syscall_desc *scall, char *argv[])
 {
@@ -487,6 +646,16 @@ call_syscall(struct syscall_desc *scall, char *argv[])
 			return (i);
 		}
 		break;
+#ifdef HAS_ACL
+	case ACTION_GETFACL :
+		rval = do_getfacl(STR(0), STR(1));
+		if (rval == 0)
+			return (i);
+		break;
+	case ACTION_SETFACL :
+		rval = do_setfacl(STR(0), STR(1), STR(2));
+		break;
+#endif
 	default:
 		fprintf(stderr, "unsupported syscall\n");
 		exit(1);
