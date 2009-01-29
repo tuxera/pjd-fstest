@@ -536,8 +536,10 @@ call_syscall(struct syscall_desc *scall, char *argv[])
 			exit(1);
 		} else {
 			if (argv[i] == NULL || strcmp(argv[i], ":") == 0) {
-				if (scall->sd_args[i] & TYPE_OPTIONAL)
+				if (scall->sd_args[i] & TYPE_OPTIONAL) {
+					args[i].str = NULL;
 					break;
+				}
 				fprintf(stderr, "too few arguments\n");
 				exit(1);
 			}
