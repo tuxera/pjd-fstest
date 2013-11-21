@@ -128,7 +128,8 @@ static struct syscall_desc syscalls[] = {
 	{ "lstat", ACTION_LSTAT, { TYPE_STRING, TYPE_STRING, TYPE_NONE } },
 #ifdef HAS_ACL
 	{ "getfacl", ACTION_GETFACL, { TYPE_STRING, TYPE_STRING, TYPE_NONE } },
-	{ "setfacl", ACTION_SETFACL, { TYPE_STRING, TYPE_STRING, TYPE_STRING | TYPE_OPTIONAL } },
+	{ "setfacl", ACTION_SETFACL, { TYPE_STRING, TYPE_STRING,
+				 TYPE_STRING | TYPE_OPTIONAL, TYPE_NONE } },
 #endif
 	{ NULL, -1, { TYPE_NONE } }
 };
