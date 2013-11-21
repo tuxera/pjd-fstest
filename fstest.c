@@ -40,6 +40,8 @@
 #include <ctype.h>
 #include <errno.h>
 #include <assert.h>
+#include <sys/types.h>
+#include <utime.h>
 #ifdef HAS_ACL
 #include <sys/acl.h>
 #endif
@@ -81,6 +83,7 @@ enum action {
 	ACTION_TRUNCATE,
 	ACTION_STAT,
 	ACTION_LSTAT,
+	ACTION_UTIME,
 #ifdef HAS_ACL
 	ACTION_GETFACL,
 	ACTION_SETFACL,
@@ -126,6 +129,8 @@ static struct syscall_desc syscalls[] = {
 	{ "truncate", ACTION_TRUNCATE, { TYPE_STRING, TYPE_NUMBER, TYPE_NONE } },
 	{ "stat", ACTION_STAT, { TYPE_STRING, TYPE_STRING, TYPE_NONE } },
 	{ "lstat", ACTION_LSTAT, { TYPE_STRING, TYPE_STRING, TYPE_NONE } },
+	{ "utime", ACTION_UTIME, { TYPE_STRING, TYPE_NUMBER | TYPE_OPTIONAL,
+				TYPE_NUMBER | TYPE_OPTIONAL, TYPE_NONE } },
 #ifdef HAS_ACL
 	{ "getfacl", ACTION_GETFACL, { TYPE_STRING, TYPE_STRING, TYPE_NONE } },
 	{ "setfacl", ACTION_SETFACL, { TYPE_STRING, TYPE_STRING,
@@ -517,6 +522,7 @@ static unsigned int
 call_syscall(struct syscall_desc *scall, char *argv[])
 {
 	struct stat64 sb;
+	struct utimbuf ut;
 	long long flags;
 	unsigned int i;
 	char *endp;
@@ -647,6 +653,21 @@ call_syscall(struct syscall_desc *scall, char *argv[])
 		if (rval == 0) {
 			show_stats(&sb, STR(1));
 			return (i);
+		}
+		break;
+	case ACTION_UTIME :
+		switch (i) {
+		case 1 :
+			rval = utime(STR(0), (struct utimbuf*)NULL);
+			break;
+		case 3:
+			ut.actime = NUM(1);
+			ut.modtime = NUM(2);
+			rval = utime(STR(0), &ut);
+			break;
+		default :
+			fprintf(stderr,"utime() requires 1 or 3 arguments\n");
+			exit(1);
 		}
 		break;
 #ifdef HAS_ACL
