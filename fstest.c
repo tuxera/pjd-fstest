@@ -689,7 +689,7 @@ set_gids(char *gids)
 	gidset = malloc(sizeof(*gidset) * ngroups);
 	assert(gidset != NULL);
 	for (i = 0, g = strtok(gids, ","); g != NULL; g = strtok(NULL, ","), i++) {
-		if (i >= ngroups) {
+		if (i >= (unsigned int)ngroups) {
 			fprintf(stderr, "too many gids\n");
 			exit(1);
 		}
