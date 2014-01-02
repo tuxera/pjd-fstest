@@ -85,7 +85,7 @@ expect 07563 stat ${d0}/${n1} mode
 expect 'u::r-x,g::rw-,o::-wx' getfacl ${d0}/${n1} access
 expect EACCES getfacl ${d0}/${n1} default
 #
-# updating an ACL has no impact on ctime
+# updating an ACL updates the ctime
 #
 ctime1=`${fstest} stat ${d0} ctime`
 ctime2=`${fstest} stat ${d0}/${n2} ctime`
@@ -94,7 +94,7 @@ expect 0 setfacl ${d0}/${n2} m 'u::x,g::x,o::x'
 ctime3=`${fstest} stat ${d0} ctime`
 ctime4=`${fstest} stat ${d0}/${n2} ctime`
 test_check $ctime1 -eq $ctime3
-test_check $ctime2 -eq $ctime4
+test_check $ctime2 -lt $ctime4
 
 #
 # Clean
