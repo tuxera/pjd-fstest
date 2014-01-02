@@ -76,19 +76,25 @@ expect 0 -u 65532 -g 65531 -- chown ${n0} -1 -1
 expect 0 unlink ${n0}
 
 # when super-user calls chown(2), set-uid and set-gid bits are not removed.
+# Posix only mentions the situation where an execution bit is set, and
+# for a regular file, clearing set-uid and set-gid is implementation defined,
+# for a non-regular file set-uid and set-gid "may" be cleared.
 # 43
 expect 0 create ${n0} 0644
 expect 0 chown ${n0} 65534 65533
 expect 0 chmod ${n0} 06555
 expect 06555 lstat ${n0} mode
 expect 0 chown ${n0} 65532 65531
-case "${os}" in
-Linux)
+case "${os}:${fs}" in
+Linux:glusterfs)
+	expect "0555|06555" lstat ${n0} mode
+	;;
+Linux:*)
 	expect 0555 lstat ${n0} mode
-        ;;
+	;;
 *)
 	expect 06555 lstat ${n0} mode
-        ;;
+	;;
 esac
 expect 0 unlink ${n0}
 # 50
@@ -97,13 +103,16 @@ expect 0 chown ${n0} 0 0
 expect 0 chmod ${n0} 06555
 expect 06555 lstat ${n0} mode
 expect 0 chown ${n0} 65534 65533
-case "${os}" in
-Linux)
-        expect 0555 lstat ${n0} mode
-        ;;
+case "${os}:${fs}" in
+Linux:glusterfs)
+	expect "0555|06555" lstat ${n0} mode
+	;;
+Linux:*)
+	expect 0555 lstat ${n0} mode
+	;;
 *)
-        expect 06555 lstat ${n0} mode
-        ;;
+	expect 06555 lstat ${n0} mode
+	;;
 esac
 
 expect 0 unlink ${n0}
@@ -113,18 +122,23 @@ expect 0 chown ${n0} 65534 65533
 expect 0 chmod ${n0} 06555
 expect 06555 lstat ${n0} mode
 expect 0 chown ${n0} 0 0
-case "${os}" in
-Linux)
-        expect 0555 lstat ${n0} mode
-        ;;
+case "${os}:${fs}" in
+Linux:glusterfs)
+	expect "0555|06555" lstat ${n0} mode
+	;;
+Linux:*)
+	expect 0555 lstat ${n0} mode
+	;;
 *)
-        expect 06555 lstat ${n0} mode
-        ;;
+	expect 06555 lstat ${n0} mode
+	;;
 esac
 expect 0 unlink ${n0}
 
 # when non-super-user calls chown(2) successfully, set-uid and set-gid bits are
 # removed, except when both uid and gid are equal to -1.
+# Posix mentions this only for regular files, so clearing set-uid and set-gid
+# for a non-regular file is left open to implementation.
 # 64
 expect 0 create ${n0} 0644
 expect 0 chown ${n0} 65534 65533
@@ -139,13 +153,16 @@ expect 0555,65534,65533 lstat ${n0} mode,uid,gid
 expect 0 chmod ${n0} 06555
 expect 06555 lstat ${n0} mode
 expect 0 -u 65534 -g 65533,65532 -- chown ${n0} -1 -1
-case "${os}" in
-Linux)
+case "${os}:${fs}" in
+Linux:glusterfs)
+	expect "0555,65534,65533|06555,65534,65533" lstat ${n0} mode,uid,gid
+	;;
+Linux:*)
 	expect 0555,65534,65533 lstat ${n0} mode,uid,gid
-        ;;
+	;;
 *)
 	expect 06555,65534,65533 lstat ${n0} mode,uid,gid
-        ;;
+	;;
 esac
 
 expect 0 unlink ${n0}
@@ -156,23 +173,35 @@ expect 0 chmod ${n0} 06555
 expect 06555 lstat ${n0} mode
 expect 0 -u 65534 -g 65533,65532 chown ${n0} 65534 65532
 case "${os}:${fs}" in
-Linux:ext3|Linux:ntfs-3g)
+Linux:glusterfs)
+	expect "0555,65534,65532|06555,65534,65532" lstat ${n0} mode,uid,gid
+	;;
+Linux:xfs)
+	expect 0555,65534,65532 lstat ${n0} mode,uid,gid
+	;;
+Linux:*)
 	expect 06555,65534,65532 lstat ${n0} mode,uid,gid
-        ;;
+	;;
 *)
 	expect 0555,65534,65532 lstat ${n0} mode,uid,gid
-        ;;
+	;;
 esac
 expect 0 chmod ${n0} 06555
 expect 06555 lstat ${n0} mode
 expect 0 -u 65534 -g 65533,65532 -- chown ${n0} -1 65533
 case "${os}:${fs}" in
-Linux:ext3|Linux:ntfs-3g)
+Linux:glusterfs)
+	expect "0555,65534,65533|06555,65534,65533" lstat ${n0} mode,uid,gid
+	;;
+Linux:xfs)
+	expect 0555,65534,65533 lstat ${n0} mode,uid,gid
+	;;
+Linux:*)
 	expect 06555,65534,65533 lstat ${n0} mode,uid,gid
-        ;;
+	;;
 *)
 	expect 0555,65534,65533 lstat ${n0} mode,uid,gid
-        ;;
+	;;
 esac
 expect 0 chmod ${n0} 06555
 expect 06555 lstat ${n0} mode
@@ -277,18 +306,25 @@ ctime2=`${fstest} lstat ${n0} ctime`
 test_check $ctime1 -lt $ctime2
 expect 0 unlink ${n0}
 # 154
+# Posix is unclear about updating ctime when both uid and gid are equal to -1
 expect 0 create ${n0} 0644
 ctime1=`${fstest} stat ${n0} ctime`
 sleep 1
 expect 0 -- chown ${n0} -1 -1
 ctime2=`${fstest} stat ${n0} ctime`
 case "${os}:${fs}" in
-Linux:ext3)
-	test_check $ctime1 -lt $ctime2
-        ;;
-*)
+Linux:glusterfs)
+	test_check $ctime1 -le $ctime2
+	;;
+SunOS:*|Linux:ntfs-3g)
 	test_check $ctime1 -eq $ctime2
-        ;;
+	;;
+Linux:*)
+	test_check $ctime1 -lt $ctime2
+	;;
+*)
+	test_check $ctime1 -le $ctime2
+	;;
 esac
 expect 0 unlink ${n0}
 # 158
@@ -298,12 +334,18 @@ sleep 1
 expect 0 -- chown ${n0} -1 -1
 ctime2=`${fstest} stat ${n0} ctime`
 case "${os}:${fs}" in
-Linux:ext3)
-	test_check $ctime1 -lt $ctime2
-        ;;
-*)
+Linux:glusterfs)
+	test_check $ctime1 -le $ctime2
+	;;
+SunOS:*|Linux:ntfs-3g)
 	test_check $ctime1 -eq $ctime2
-        ;;
+	;;
+Linux:*)
+	test_check $ctime1 -lt $ctime2
+	;;
+*)
+	test_check $ctime1 -le $ctime2
+	;;
 esac
 expect 0 rmdir ${n0}
 # 162
@@ -313,12 +355,18 @@ sleep 1
 expect 0 -- chown ${n0} -1 -1
 ctime2=`${fstest} stat ${n0} ctime`
 case "${os}:${fs}" in
-Linux:ext3)
-	test_check $ctime1 -lt $ctime2
-        ;;
-*)
+Linux:glusterfs)
+	test_check $ctime1 -le $ctime2
+	;;
+SunOS:*|Linux:ntfs-3g)
 	test_check $ctime1 -eq $ctime2
-        ;;
+	;;
+Linux:*)
+	test_check $ctime1 -lt $ctime2
+	;;
+*)
+	test_check $ctime1 -le $ctime2
+	;;
 esac
 expect 0 unlink ${n0}
 # 166
@@ -328,12 +376,18 @@ sleep 1
 expect 0 -- lchown ${n0} -1 -1
 ctime2=`${fstest} lstat ${n0} ctime`
 case "${os}:${fs}" in
-Linux:ext3)
-	test_check $ctime1 -lt $ctime2
-        ;;
-*)
+Linux:glusterfs)
+	test_check $ctime1 -le $ctime2
+	;;
+SunOS:*|Linux:ntfs-3g)
 	test_check $ctime1 -eq $ctime2
-        ;;
+	;;
+Linux:*)
+	test_check $ctime1 -lt $ctime2
+	;;
+*)
+	test_check $ctime1 -le $ctime2
+	;;
 esac
 expect 0 unlink ${n0}
 
