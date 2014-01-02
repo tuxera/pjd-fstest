@@ -117,6 +117,7 @@ expect 0 unlink ${n0}
 expect 0 unlink ${n1}
 
 # unsuccessful link(2) does not update ctime.
+# Posix only mentions ctime to be updated on successful completion
 expect 0 create ${n0} 0644
 expect 0 -- chown ${n0} 65534 -1
 ctime1=`${fstest} stat ${n0} ctime`
@@ -125,7 +126,15 @@ dmtime1=`${fstest} stat . mtime`
 sleep 1
 expect EACCES -u 65534 link ${n0} ${n1}
 ctime2=`${fstest} stat ${n0} ctime`
-test_check $ctime1 -eq $ctime2
+# 71
+case "${os}:${fs}" in
+SunOS:UFS)
+	test_check $ctime1 -lt $ctime2
+	;;
+*)
+	test_check $ctime1 -eq $ctime2
+	;;
+esac
 dctime2=`${fstest} stat . ctime`
 test_check $dctime1 -eq $dctime2
 dmtime2=`${fstest} stat . mtime`
@@ -140,7 +149,15 @@ dmtime1=`${fstest} stat . mtime`
 sleep 1
 expect EACCES -u 65534 link ${n0} ${n1}
 ctime2=`${fstest} stat ${n0} ctime`
-test_check $ctime1 -eq $ctime2
+# 78
+case "${os}:${fs}" in
+SunOS:UFS)
+	test_check $ctime1 -lt $ctime2
+	;;
+*)
+	test_check $ctime1 -eq $ctime2
+	;;
+esac
 dctime2=`${fstest} stat . ctime`
 test_check $dctime1 -eq $dctime2
 dmtime2=`${fstest} stat . mtime`
