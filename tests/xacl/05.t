@@ -72,6 +72,8 @@ expect ENOTDIR getfacl ${d0}/${n1}/none access
 #
 rm -rf ${d0}
 
-else quick_exit
+else
+rmdir ${n1}
+quick_exit
 fi
 

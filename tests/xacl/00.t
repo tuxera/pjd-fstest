@@ -101,5 +101,7 @@ test_check $ctime2 -eq $ctime4
 #
 rm -rf ${d0}
 
-else quick_exit
+else
+rmdir ${n1}
+quick_exit
 fi

@@ -79,5 +79,7 @@ expect 'u::---,u:root:--x,u:65531:-wx,g::-wx,g:root:r-x,g:65532:--x,m::rwx,o::r-
 #
 rm -rf ${d0}
 
-else quick_exit
+else
+rmdir ${n1}
+quick_exit
 fi

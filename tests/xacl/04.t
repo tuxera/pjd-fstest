@@ -110,5 +110,7 @@ expect 0 -u 65533 setfacl ${d0}/${n1} m 'u::rw,g::r,o::r,m::rx'
 #
 rm -rf ${d0}
 
-else quick_exit
+else
+rmdir ${n1}
+quick_exit
 fi

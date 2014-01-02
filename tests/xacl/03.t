@@ -132,5 +132,7 @@ expect EACCES getfacl ${d0}/${n2} default
 #
 rm -rf ${d0}
 
-else quick_exit
+else
+rmdir ${n1}
+quick_exit
 fi

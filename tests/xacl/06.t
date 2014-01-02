@@ -117,7 +117,9 @@ expect 0 -u 65533 -g 65533 setfacl ${d0} k
 #
 rm -rf ${d0}
 
-else quick_exit
+else
+rmdir ${n1}
+quick_exit
 fi
 
 #/home/linux/rpmbuild/ntfs/fstest/pjd-fstest/fstest -u 65533 getfacl ${d0} access
