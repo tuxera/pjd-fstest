@@ -7,9 +7,9 @@ dir=`dirname $0`
 . ${dir}/../misc.sh
 
 if supported lchmod; then
-	echo "1..77"
+	echo "1..125"
 else
-	echo "1..58"
+	echo "1..106"
 fi
 
 n0=`namegen`
@@ -19,7 +19,7 @@ n2=`namegen`
 expect 0 mkdir ${n2} 0755
 cdir=`pwd`
 cd ${n2}
-
+# 2
 expect 0 create ${n0} 0644
 expect 0644 stat ${n0} mode
 expect 0 chmod ${n0} 0111
@@ -31,7 +31,7 @@ expect 0755 stat ${n0} mode
 expect 0 chmod ${n0} 0753
 expect 0753 stat ${n0} mode
 expect 0 rmdir ${n0}
-
+# 12
 expect 0 mkfifo ${n0} 0644
 expect 0644 stat ${n0} mode
 expect 0 chmod ${n0} 0310
@@ -60,6 +60,58 @@ if supported lchmod; then
 	expect 0 unlink ${n0}
 	expect 0 unlink ${n1}
 fi
+
+# test S_ISUID, S_ISGID and S_ISVTX and permission bits combinations
+expect 0 create ${n0} 0644
+expect 0 chmod ${n0} 01111
+expect 01111 stat ${n0} mode
+expect 0 chmod ${n0} 02222
+expect 02222 stat ${n0} mode
+expect 0 chmod ${n0} 03333
+expect 03333 stat ${n0} mode
+expect 0 chmod ${n0} 04444
+expect 04444 stat ${n0} mode
+expect 0 chmod ${n0} 05555
+expect 05555 stat ${n0} mode
+expect 0 chmod ${n0} 06666
+expect 06666 stat ${n0} mode
+expect 0 chmod ${n0} 07777
+expect 07777 stat ${n0} mode
+expect 0 unlink ${n0}
+
+expect 0 mkdir ${n0} 0755
+expect 0 chmod ${n0} 01111
+expect 01111 stat ${n0} mode
+expect 0 chmod ${n0} 02222
+expect 02222 stat ${n0} mode
+expect 0 chmod ${n0} 03333
+expect 03333 stat ${n0} mode
+expect 0 chmod ${n0} 04444
+expect 04444 stat ${n0} mode
+expect 0 chmod ${n0} 05555
+expect 05555 stat ${n0} mode
+expect 0 chmod ${n0} 06666
+expect 06666 stat ${n0} mode
+expect 0 chmod ${n0} 07777
+expect 07777 stat ${n0} mode
+expect 0 rmdir ${n0}
+
+expect 0 mkfifo ${n0} 0644
+expect 0 chmod ${n0} 01111
+expect 01111 stat ${n0} mode
+expect 0 chmod ${n0} 02222
+expect 02222 stat ${n0} mode
+expect 0 chmod ${n0} 03333
+expect 03333 stat ${n0} mode
+expect 0 chmod ${n0} 04444
+expect 04444 stat ${n0} mode
+expect 0 chmod ${n0} 05555
+expect 05555 stat ${n0} mode
+expect 0 chmod ${n0} 06666
+expect 06666 stat ${n0} mode
+expect 0 chmod ${n0} 07777
+expect 07777 stat ${n0} mode
+expect 0 unlink ${n0}
 
 # successful chmod(2) updates ctime.
 expect 0 create ${n0} 0644
