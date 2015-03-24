@@ -50,6 +50,7 @@
 
 #ifndef HAS_TRUNCATE64
 #define	truncate64	truncate
+#define	ftruncate64	ftruncate
 #endif
 #ifndef HAS_STAT64
 #define	stat64	stat
@@ -83,6 +84,7 @@ enum action {
 	ACTION_LCHFLAGS,
 #endif
 	ACTION_TRUNCATE,
+	ACTION_FTRUNCATE,
 	ACTION_STAT,
 	ACTION_LSTAT,
 	ACTION_UTIME,
@@ -99,6 +101,7 @@ enum action {
 #define	TYPE_STRING	0x0001
 #define	TYPE_NUMBER	0x0002
 #define	TYPE_DESCRIPTOR	0x0003
+#define	TYPE_MASK	0x000f
 
 #define	TYPE_OPTIONAL	0x0100
 
@@ -136,6 +139,7 @@ static struct syscall_desc syscalls[] = {
 	{ "lchflags", ACTION_LCHFLAGS, { TYPE_STRING, TYPE_STRING, TYPE_NONE } },
 #endif
 	{ "truncate", ACTION_TRUNCATE, { TYPE_STRING, TYPE_NUMBER, TYPE_NONE } },
+	{ "ftruncate", ACTION_FTRUNCATE, { TYPE_DESCRIPTOR, TYPE_NUMBER, TYPE_NONE } },
 	{ "stat", ACTION_STAT, { TYPE_STRING, TYPE_STRING, TYPE_NONE } },
 	{ "lstat", ACTION_LSTAT, { TYPE_STRING, TYPE_STRING, TYPE_NONE } },
 	{ "utime", ACTION_UTIME, { TYPE_STRING, TYPE_NUMBER | TYPE_OPTIONAL,
@@ -239,6 +243,9 @@ static struct flag chflags_flags[] = {
 #endif
 
 static const char *err2str(int error);
+
+static int *descriptors;
+static int ndescriptors;
 
 static void
 usage(void)
@@ -531,6 +538,33 @@ int do_setfacl(const char *path, const char *options, const char *textacl)
 
 #endif
 
+static void
+descriptor_add(int fd)
+{
+
+	ndescriptors++;
+	if (descriptors == NULL) {
+		descriptors = malloc(sizeof(descriptors[0]) * ndescriptors);
+	} else {
+		descriptors = realloc(descriptors,
+		    sizeof(descriptors[0]) * ndescriptors);
+	}
+	assert(descriptors != NULL);
+	descriptors[ndescriptors - 1] = fd;
+}
+
+static int
+descriptor_get(int pos)
+{
+
+	if (pos < 0 || pos >= ndescriptors) {
+		fprintf(stderr, "invalid descriptor %d\n", pos);
+		exit(1);
+	}
+
+	return (descriptors[pos]);
+}
+
 static unsigned int
 call_syscall(struct syscall_desc *scall, char *argv[])
 {
@@ -540,11 +574,13 @@ call_syscall(struct syscall_desc *scall, char *argv[])
 	unsigned int i;
 	char *endp;
 	int rval;
+	int more;
 	union {
 		char *str;
 		long long num;
 	} args[MAX_ARGS];
 
+	more = 0;
 	/*
 	 * Verify correctness of the arguments.
 	 */
@@ -563,18 +599,42 @@ call_syscall(struct syscall_desc *scall, char *argv[])
 				fprintf(stderr, "too few arguments\n");
 				exit(1);
 			}
-			if (scall->sd_args[i] & TYPE_STRING) {
+			if ((scall->sd_args[i] & TYPE_MASK) == TYPE_STRING) {
 				if (strcmp(argv[i], "NULL") == 0)
 					args[i].str = NULL;
 				else if (strcmp(argv[i], "DEADCODE") == 0)
 					args[i].str = (void *)0xdeadc0de;
 				else
 					args[i].str = argv[i];
-			} else if (scall->sd_args[i] & TYPE_NUMBER) {
+			} else if ((scall->sd_args[i] & TYPE_MASK)
+						== TYPE_NUMBER) {
 				args[i].num = strtoll(argv[i], &endp, 0);
 				if (*endp != '\0' && !isspace((unsigned char)*endp)) {
 					fprintf(stderr, "invalid argument %u, number expected [%s]\n", i, endp);
 					exit(1);
+				}
+			} else if ((scall->sd_args[i] & TYPE_MASK) ==
+			    TYPE_DESCRIPTOR) {
+				if (strcmp(argv[i], "AT_FDCWD") == 0) {
+					args[i].num = AT_FDCWD;
+				} else if (strcmp(argv[i], "BADFD") == 0) {
+					/* In case AT_FDCWD is -1 on some systems... */
+					if (AT_FDCWD == -1)
+						args[i].num = -2;
+					else
+						args[i].num = -1;
+				} else {
+					int pos;
+
+					pos = strtoll(argv[i], &endp, 0);
+					if (*endp != '\0' &&
+					    !isspace((unsigned char)*endp)) {
+						fprintf(stderr,
+						    "invalid argument %u, number expected [%s]\n",
+						    i, endp);
+						exit(1);
+					}
+					args[i].num = descriptor_get(pos);
 				}
 			}
 		}
@@ -600,11 +660,17 @@ call_syscall(struct syscall_desc *scall, char *argv[])
 			}
 			rval = open(STR(0), flags);
 		}
+		if (rval >= 0) {
+			more = argv[i] && !strcmp(argv[i], ":");
+			descriptor_add(rval);
+		}
 		break;
 	case ACTION_CREATE:
 		rval = open(STR(0), O_CREAT | O_EXCL, NUM(1));
-		if (rval >= 0)
-			close(rval);
+		if (rval >= 0) {
+			more = argv[i] && !strcmp(argv[i], ":");
+			descriptor_add(rval);
+		}
 		break;
 	case ACTION_UNLINK:
 		rval = unlink(STR(0));
@@ -653,6 +719,9 @@ call_syscall(struct syscall_desc *scall, char *argv[])
 #endif
 	case ACTION_TRUNCATE:
 		rval = truncate64(STR(0), NUM(1));
+		break;
+	case ACTION_FTRUNCATE:
+		rval = ftruncate64(NUM(0), NUM(1));
 		break;
 	case ACTION_STAT:
 		rval = stat64(STR(0), &sb);
@@ -765,7 +834,9 @@ call_syscall(struct syscall_desc *scall, char *argv[])
 		printf("%s\n", serrno);
 		exit(1);
 	}
-	printf("0\n");
+		/* Do not output a "0" when more syscalls to come */
+	if (!more)
+		printf("0\n");
 	return (i);
 }
 
@@ -881,6 +952,10 @@ main(int argc, char *argv[])
 		argc++;
 		argv++;
 	}
+
+		/* Close the descriptors left open */
+	while (ndescriptors > 0)
+		close(descriptor_get(--ndescriptors));
 
 	exit(0);
 }
