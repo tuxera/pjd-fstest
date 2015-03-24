@@ -8,7 +8,12 @@ dir=`dirname $0`
 
 case "${os}" in
 SunOS)
-	echo "1..40"
+	if file ${fstest} | grep -q "ELF 32-bit"
+	then
+		echo "1..38"
+	else
+		echo "1..40"
+	fi
         ;;
 *)
 	echo "1..28"
@@ -50,7 +55,12 @@ for type in c b; do
 
 		# mknod returns EINVAL if device's numbers are too big
 		# for 32-bit solaris !!
-		expect EINVAL mknod ${n0} ${type} 0755 4096 262144
+		# This cannot be tested if fstest was compiled for 32-bit,
+		# as there is no way to insert big values into a 32-bit dev_t
+		if ! file ${fstest} | grep -q "ELF 32-bit"
+		then
+			expect EINVAL mknod ${n0} ${type} 0755 4096 262144
+		fi
 	        ;;
 	esac
 
