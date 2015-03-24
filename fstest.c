@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006-2007 Pawel Jakub Dawidek <pjd@FreeBSD.org>
+ * Copyright (c) 2006-2010 Pawel Jakub Dawidek <pjd@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -41,6 +41,8 @@
 #include <errno.h>
 #include <assert.h>
 #include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <utime.h>
 #ifdef HAS_ACL
 #include <sys/acl.h>
@@ -84,6 +86,9 @@ enum action {
 	ACTION_STAT,
 	ACTION_LSTAT,
 	ACTION_UTIME,
+	ACTION_BIND,
+	ACTION_MKNOD,
+	ACTION_MKNODAT,
 #ifdef HAS_ACL
 	ACTION_GETFACL,
 	ACTION_SETFACL,
@@ -93,6 +98,7 @@ enum action {
 #define	TYPE_NONE	0x0000
 #define	TYPE_STRING	0x0001
 #define	TYPE_NUMBER	0x0002
+#define	TYPE_DESCRIPTOR	0x0003
 
 #define	TYPE_OPTIONAL	0x0100
 
@@ -114,6 +120,9 @@ static struct syscall_desc syscalls[] = {
 	{ "symlink", ACTION_SYMLINK, { TYPE_STRING, TYPE_STRING, TYPE_NONE } },
 	{ "rename", ACTION_RENAME, { TYPE_STRING, TYPE_STRING, TYPE_NONE } },
 	{ "mkfifo", ACTION_MKFIFO, { TYPE_STRING, TYPE_NUMBER, TYPE_NONE } },
+	{ "bind", ACTION_BIND, { TYPE_STRING, TYPE_NONE } },
+	{ "mknod", ACTION_MKNOD, { TYPE_STRING, TYPE_STRING, TYPE_NUMBER, TYPE_NUMBER, TYPE_NUMBER, TYPE_NONE} },
+	{ "mknodat", ACTION_MKNODAT, { TYPE_DESCRIPTOR, TYPE_STRING, TYPE_STRING, TYPE_NUMBER, TYPE_NUMBER, TYPE_NUMBER, TYPE_NONE} },
 	{ "chmod", ACTION_CHMOD, { TYPE_STRING, TYPE_NUMBER, TYPE_NONE } },
 #ifdef HAS_LCHMOD
 	{ "lchmod", ACTION_LCHMOD, { TYPE_STRING, TYPE_NUMBER, TYPE_NONE } },
@@ -320,6 +329,10 @@ show_stat(struct stat64 *sp, const char *what)
 		printf("%lld", (long long)sp->st_mtime);
 	else if (strcmp(what, "ctime") == 0)
 		printf("%lld", (long long)sp->st_ctime);
+	else if (strcmp(what, "major") == 0)
+		printf("%u", (unsigned int)major(sp->st_rdev));
+	else if (strcmp(what, "minor") == 0)
+		printf("%u", (unsigned int)minor(sp->st_rdev));
 #ifdef HAS_CHFLAGS
 	else if (strcmp(what, "flags") == 0)
 		printf("%s", flags2str(chflags_flags, sp->st_flags));
@@ -670,6 +683,64 @@ call_syscall(struct syscall_desc *scall, char *argv[])
 			exit(1);
 		}
 		break;
+	case ACTION_BIND:
+	    {
+		struct sockaddr_un sunx;
+
+		sunx.sun_family = AF_UNIX;
+		strncpy(sunx.sun_path, STR(0), sizeof(sunx.sun_path) - 1);
+		sunx.sun_path[sizeof(sunx.sun_path) - 1] = '\0';
+		rval = socket(AF_UNIX, SOCK_STREAM, 0);
+		if (rval < 0)
+			break;
+		rval = bind(rval, (struct sockaddr *)&sunx, sizeof(sunx));
+		break;
+	    }
+	case ACTION_MKNOD:
+	case ACTION_MKNODAT:
+	    {
+		mode_t ntype;
+		dev_t dev;
+		int fa;
+
+		switch (scall->sd_action) {
+		case ACTION_MKNOD:
+			fa = 0;
+			break;
+		case ACTION_MKNODAT:
+			fa = 1;
+			break;
+		default:
+			abort();
+		}
+
+		dev = makedev(NUM(fa + 3), NUM(fa + 4));
+		if (strcmp(STR(fa + 1), "c") == 0)	/* character device */
+			ntype = S_IFCHR;
+		else if (strcmp(STR(fa + 1), "b") == 0)	/* block device */
+			ntype = S_IFBLK;
+		else if (strcmp(STR(fa + 1), "f") == 0)	/* fifo special */
+			ntype = S_IFIFO;
+		else if (strcmp(STR(fa + 1), "d") == 0)	/* directory */
+			ntype = S_IFDIR;
+		else if (strcmp(STR(fa + 1), "o") == 0)	/* regular file */
+			ntype = S_IFREG;
+		else {
+			fprintf(stderr, "wrong argument 1\n");
+			exit(1);
+		}
+		switch (scall->sd_action) {
+		case ACTION_MKNOD:
+			rval = mknod(STR(0), ntype | NUM(2), dev);
+			break;
+		case ACTION_MKNODAT:
+			rval = mknodat(NUM(0), STR(1), ntype | NUM(3), dev);
+			break;
+		default:
+			abort();
+		}
+		break;
+	    }
 #ifdef HAS_ACL
 	case ACTION_GETFACL :
 		rval = do_getfacl(STR(0), STR(1));

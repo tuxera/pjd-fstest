@@ -141,3 +141,59 @@ require()
 	fi
 	quick_exit
 }
+
+# POSIX:
+# {NAME_MAX}
+#     Maximum number of bytes in a filename (not including terminating null).
+namegen_max()
+{
+	echo ${name_max}
+}
+
+# POSIX:
+# {PATH_MAX}
+#     Maximum number of bytes in a pathname, including the terminating null character.
+dirgen_max()
+{
+	echo ${too_long} | cut -b -$((path_max_val-1))
+}
+
+create_file() {
+	type="${1}"
+	name="${2}"
+
+	case "${type}" in
+	none)
+		return
+		;;
+	regular)
+		expect 0 create ${name} 0644
+		;;
+	dir)
+		expect 0 mkdir ${name} 0755
+		;;
+	fifo)
+		expect 0 mkfifo ${name} 0644
+		;;
+	block)
+		expect 0 mknod ${name} b 0644 1 2
+		;;
+	char)
+		expect 0 mknod ${name} c 0644 1 2
+		;;
+	socket)
+		expect 0 bind ${name}
+		;;
+	symlink)
+		expect 0 symlink test ${name}
+		;;
+	esac
+	if [ -n "${3}" -a -n "${4}" -a -n "${5}" ]; then
+		expect 0 lchmod ${name} ${3}
+		expect 0 lchown ${name} ${4} ${5}
+	elif [ -n "${3}" -a -n "${4}" ]; then
+		expect 0 lchown ${name} ${3} ${4}
+	elif [ -n "${3}" ]; then
+		expect 0 lchmod ${name} ${3}
+	fi
+}
