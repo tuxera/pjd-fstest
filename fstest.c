@@ -944,14 +944,14 @@ main(int argc, char *argv[])
 			fprintf(stderr, "syscall '%s' not supported\n", argv[0]);
 			exit(1);
 		}
-		argc++;
+		argc--;
 		argv++;
 		n = call_syscall(scall, argv);
-		argc += n;
+		argc -= n;
 		argv += n;
 		if (argv[0] == NULL)
 			break;
-		argc++;
+		argc--;
 		argv++;
 	}
 
