@@ -459,6 +459,8 @@ int do_getfacl(const char *path, const char *filter)
 			else
 				printf("void\n");
 			acl_free(acl);
+			/* for some reason the functions above may set errno */
+			errno = 0;
 		}
 	} else
 		errno = EBADRQC; /* "bad request" */
