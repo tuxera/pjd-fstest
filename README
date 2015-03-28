@@ -1,4 +1,4 @@
-$FreeBSD: src/tools/regression/fstest/README,v 1.1 2007/01/28 00:10:28 pjd Exp $
+fstest : Posix conformance test suite
 
 Few notes on how to use fstest in short steps:
 
@@ -20,6 +20,11 @@ That's all. Enjoy.
 Currently supported operating systems: FreeBSD, Solaris, Linux.
 Currently supported file system types: UFS, ZFS, ext3, ext4, ntfs-3g,
                                        xfs, btrfs, glusterfs.
+
+Other forks of fstest are available at :
+https://github.com/pjd/pjdfstest.git
+https://github.com/ffilz/ntfs-3g-pjd-fstest/commits/master
+https://github.com/ffilz/pjdfstest/commits/master
 
 Author: 
 Pawel Jakub Dawidek <pjd@FreeBSD.org>
