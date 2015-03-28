@@ -956,8 +956,10 @@ main(int argc, char *argv[])
 	}
 
 		/* Close the descriptors left open */
-	while (ndescriptors > 0)
-		close(descriptor_get(--ndescriptors));
+	while (ndescriptors > 0) {
+		close(descriptor_get(ndescriptors - 1));
+		ndescriptors--;
+	}
 
 	exit(0);
 }
