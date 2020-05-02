@@ -40,7 +40,8 @@ expect EACCES -u 65533 -g 65533 setfacl ${d0}/${n1} m 'u::rw-,g::r--,o::r--'
 expect 0 setfacl ${d0} m 'u::rwx,g::rwx,o::rwx,m::rwx'
 expect 'u::rwx,g::rwx,m::rwx,o::rwx' getfacl ${d0} access
 expect 0 -u 65533 -g 65533 setfacl ${d0}/${n1} m 'u::rw-,g::r--,o::r--'
-expect EACCES -u 65533 -g 65533 setfacl ${d0}/${n1} md 'u::rw-,g::r--,o::r--'
+# Behavior change, kernel 3.10 returned EACCESS, kernel 4.18 returns EINVAL
+expect 'EACCES|EINVAL' -u 65533 -g 65533 setfacl ${d0}/${n1} md 'u::rw-,g::r--,o::r--'
 #
 #
 # EINVAL argument does not point to a valid ACL
