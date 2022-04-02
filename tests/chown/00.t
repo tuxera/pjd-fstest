@@ -176,9 +176,6 @@ case "${os}:${fs}" in
 Linux:glusterfs)
 	expect "0555,65534,65532|06555,65534,65532" lstat ${n0} mode,uid,gid
 	;;
-Linux:xfs)
-	expect 0555,65534,65532 lstat ${n0} mode,uid,gid
-	;;
 Linux:*)
 	expect 06555,65534,65532 lstat ${n0} mode,uid,gid
 	;;
@@ -192,9 +189,6 @@ expect 0 -u 65534 -g 65533,65532 -- chown ${n0} -1 65533
 case "${os}:${fs}" in
 Linux:glusterfs)
 	expect "0555,65534,65533|06555,65534,65533" lstat ${n0} mode,uid,gid
-	;;
-Linux:xfs)
-	expect 0555,65534,65533 lstat ${n0} mode,uid,gid
 	;;
 Linux:*)
 	expect 06555,65534,65533 lstat ${n0} mode,uid,gid
